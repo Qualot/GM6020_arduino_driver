@@ -9,7 +9,9 @@ struct can_frame canMsgReceive;
 struct can_frame canMsgSend;
 MCP2515 mcp2515(10);
 
-int8_t controlmode = 8; //0...len, 2...direct, 4...vibration, 8...0out
+int8_t controlmode = 8; //0...len, 1...stop, 2...direct, 4...vibration, 8...0out
+int8_t controlmode_previous = 8;
+
 short power = -3000;
 float rotation = 0;
 float rotation_previous = 0;
@@ -24,31 +26,31 @@ float amplitude = 25.0;
 float frequency = 4.0;
 int num_cycles = 2000;
 unsigned long startTime = 0;
-bool sine_control_active = false;
 
 // ROS setup
 ros::NodeHandle nh;
 std_msgs::Float32MultiArray sensor_data_msg;
 ros::Publisher sensor_data_pub("sensor_data", &sensor_data_msg);
 
+void sendValues(short);
+void readValues();
+void shiftControlMode(int8_t);
+
 // Callback function for Float32MultiArray topic
 void paramCallback(const std_msgs::Float32MultiArray& msg) {
   if (msg.data_length == 4) {
-    controlmode = (int)msg.data[0];
+    //controlmode = (int)msg.data[0];
+    shiftControlMode((int)msg.data[0]);
     amplitude = msg.data[1];
     frequency = msg.data[2];
     num_cycles = (int)msg.data[3];
     rotation_initial = rotation_cumulative;
 
     startTime = millis();
-    sine_control_active = true;
   }
 }
 
 ros::Subscriber<std_msgs::Float32MultiArray> param_sub("sine_wave_params", &paramCallback);
-
-void sendValues(short);
-void readValues();
 
 void setup() {
   SPI.begin();
@@ -67,7 +69,7 @@ void setup() {
   nh.subscribe(param_sub);
 
   sensor_data_msg.data = (float*)malloc(sensor_data_msg.data_length * sizeof(float));
-  sensor_data_msg.data_length = 7;
+  sensor_data_msg.data_length = 9;
 
   readValues();
   rotation_cumulative = rotation;
@@ -89,6 +91,16 @@ void loop() {
     sendValues(output);
     break;
 
+  case 1: //stop
+    if (controlmode != controlmode_previous) {
+      controlmode_previous = controlmode;
+      rotation_initial = rotation_cumulative;
+    }
+    target_position = rotation_initial;
+    output = (target_position - rotation_cumulative) * pgain; // pgain = 200 worked w/o divergence
+    sendValues(output);
+    break;
+
   case 2: //direct
     output = amplitude;
     sendValues(output);
@@ -101,10 +113,7 @@ void loop() {
       output = (target_position - rotation_cumulative) * pgain; // pgain = 200 worked w/o divergence
       sendValues(output);
     } else {
-      sine_control_active = false;
-      controlmode = 8;
-      output = 0;
-      sendValues(output);
+      shiftControlMode(1);
     }
     break;
 
@@ -116,17 +125,6 @@ void loop() {
     sendValues(0);
     break;
   }
-
-  // if (sine_control_active) {
-  //   if (elapsedTime < num_cycles / frequency) {
-  //     target_position = amplitude * (1.0 - cos(2 * M_PI * frequency * elapsedTime)) + rotation_initial;
-  //     sendValues(target_position);
-  //   } else {
-  //     sine_control_active = false;
-  //   }
-  // }else{
-  //   sendValues(rotation_initial);
-  // }
 
   rotation_previous = rotation;
   readValues();
@@ -147,6 +145,8 @@ void loop() {
   sensor_data_msg.data[4] = speed;
   sensor_data_msg.data[5] = torque;
   sensor_data_msg.data[6] = (float)temperature;
+  sensor_data_msg.data[7] = (float)controlmode;
+  sensor_data_msg.data[8] = (float)controlmode_previous;
 
   sensor_data_pub.publish(&sensor_data_msg);
 
@@ -175,9 +175,9 @@ void sendValues(short output) {
   mcp2515.sendMessage(&canMsgSend);
 }
 
-// void sendValues(float target_position) {
-//   short output = (target_position - rotation_cumulative) * 200; // 200 worked w/o divergence
-//   canMsgSend.data[0] = (output >> 8) & 0xFF;
-//   canMsgSend.data[1] = output & 0xFF;
-//   mcp2515.sendMessage(&canMsgSend);
-// }
+void shiftControlMode(int8_t mode) {
+  if (mode ==1 || mode == 2 || mode == 4 || mode == 8) {
+    controlmode_previous = controlmode;
+    controlmode = mode;
+  }
+}
