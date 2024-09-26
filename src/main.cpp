@@ -37,9 +37,6 @@ void paramCallback(const std_msgs::Float32MultiArray& msg) {
     frequency = msg.data[1];
     num_cycles = (int)msg.data[2];
     rotation_initial = rotation_cumulative;
-    //rotation_initial = ((int)rotation_initial + 60) % 360;
-    //rotation_initial = (float)rotation_initial;
-
 
     startTime = millis();
     sine_control_active = true;
@@ -66,6 +63,13 @@ void setup() {
   nh.initNode();
   nh.advertise(sensor_data_pub);
   nh.subscribe(param_sub);
+
+  sensor_data_msg.data = (float*)malloc(sensor_data_msg.data_length * sizeof(float));
+  sensor_data_msg.data_length = 6;
+
+  readValues();
+  rotation_cumulative = rotation;
+  rotation_initial = rotation;
 }
 
 void loop() {
@@ -76,15 +80,16 @@ void loop() {
   if (sine_control_active) {
     if (elapsedTime < num_cycles / frequency) {
       //target_position = rotation_initial;
-      target_position = amplitude * sin(2 * M_PI * frequency * elapsedTime);
+      //target_position = amplitude * sin(2 * M_PI * frequency * elapsedTime);
       //target_position = amplitude * sin(2 * M_PI * frequency * elapsedTime) + rotation_initial;
       //target_position = amplitude * (1.0 - cos(2 * M_PI * frequency * elapsedTime));
-      //target_position = amplitude * (1.0 - cos(2 * M_PI * frequency * elapsedTime)) + rotation_initial;
+      target_position = amplitude * (1.0 - cos(2 * M_PI * frequency * elapsedTime)) + rotation_initial;
       sendValues(target_position);
     } else {
-      sendValues(0);
       sine_control_active = false;
     }
+  }else{
+    sendValues(rotation_initial);
   }
 
   rotation_previous = rotation;
@@ -99,9 +104,7 @@ void loop() {
   rotation_cumulative += delta;
 
   // Publish sensor data as a single Float32MultiArray
-  sensor_data_msg.data_length = 6;
-  sensor_data_msg.data = (float*)malloc(sensor_data_msg.data_length * sizeof(float));
-  sensor_data_msg.data[0] = rotation;
+  sensor_data_msg.data[0] = rotation_initial;
   sensor_data_msg.data[1] = target_position;
   sensor_data_msg.data[2] = rotation_cumulative;
   sensor_data_msg.data[3] = speed;
@@ -113,7 +116,7 @@ void loop() {
   nh.spinOnce();
   delay(10);
 
-  free(sensor_data_msg.data);  // Free the memory after publishing
+  //free(sensor_data_msg.data);  // Free the memory after publishing
 }
 
 void readValues() {
