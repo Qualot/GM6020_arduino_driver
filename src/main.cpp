@@ -80,15 +80,27 @@ void loop() {
   unsigned long currentTime = millis();
   float elapsedTime = (currentTime - startTime) / 1000.0;
   float target_position = 0.0;
-  float pgain = 200.0;
+  //float pgain = 200.0;
+  float pgain = 600.0 * 180.0 / PI;
   short output = 0;
+
+  rotation_previous = rotation;
+  readValues();
+
+  float delta = rotation - rotation_previous;
+  if (delta > PI) {
+    delta -= 2.0 * PI;
+  } else if (delta < -PI) {
+    delta += 2.0 * PI;
+  }
+  rotation_cumulative += delta;
+
 
   switch (controlmode)
   {
   case 0: //len
     target_position = amplitude;
     output = (target_position - rotation_cumulative) * pgain; // pgain = 200 worked w/o divergence
-    sendValues(output);
     break;
 
   case 1: //stop
@@ -98,12 +110,10 @@ void loop() {
     }
     target_position = rotation_initial;
     output = (target_position - rotation_cumulative) * pgain; // pgain = 200 worked w/o divergence
-    sendValues(output);
     break;
 
   case 2: //direct
     output = amplitude;
-    sendValues(output);
     break;
 
   case 4: //vibration
@@ -111,31 +121,23 @@ void loop() {
       //target_position = amplitude * sin(2 * M_PI * frequency * elapsedTime);
       target_position = amplitude * (1.0 - cos(2 * M_PI * frequency * elapsedTime)) + rotation_initial;
       output = (target_position - rotation_cumulative) * pgain; // pgain = 200 worked w/o divergence
-      sendValues(output);
     } else {
-      shiftControlMode(1);
+      //output = 0;
+      amplitude = rotation_initial;
+      shiftControlMode(0);
     }
     break;
 
   case 8: //0out
-    sendValues(0);
+    output = 0;
     break;
   
-  default:
-    sendValues(0);
+  default: //equals to 0out
+    output = 0;
     break;
   }
 
-  rotation_previous = rotation;
-  readValues();
-  
-  float delta = rotation - rotation_previous;
-  if (delta > 180.0) {
-    delta -= 360.0;
-  } else if (delta < -180.0) {
-    delta += 360.0;
-  }
-  rotation_cumulative += delta;
+  sendValues(output);
 
   // Publish sensor data as a single Float32MultiArray
   sensor_data_msg.data[0] = rotation_initial;
@@ -160,7 +162,8 @@ void readValues() {
   if (mcp2515.readMessage(&canMsgReceive) == MCP2515::ERROR_OK) {
     if (canMsgReceive.can_id == 0x205) {
       unsigned short r = (canMsgReceive.data[0] << 8) | (canMsgReceive.data[1] & 0xff);
-      rotation = (float)r / 8192 * 360;
+      //rotation = (float)r / 8192 * 360;
+      rotation = (float)r / 8192 * 2.0 * PI;
 
       speed = (canMsgReceive.data[2] << 8) | (canMsgReceive.data[3] & 0xff);
       torque = (canMsgReceive.data[4] << 8) | (canMsgReceive.data[5] & 0xff);
@@ -176,7 +179,7 @@ void sendValues(short output) {
 }
 
 void shiftControlMode(int8_t mode) {
-  if (mode ==1 || mode == 2 || mode == 4 || mode == 8) {
+  if (mode == 0 || mode == 1 || mode == 2 || mode == 4 || mode == 8) {
     controlmode_previous = controlmode;
     controlmode = mode;
   }
