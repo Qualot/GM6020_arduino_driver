@@ -18,14 +18,14 @@ $ roscore
 
 Terminal 2
 ```
-$ rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=115200
+$ rosrun rosserial_python serial_node.py _port:=/dev/gm6020 _baud:=115200
 ```
 
 Terminal 3
 
 ```
-# data: [amplitude, frequency, cycles]
-$ rostopic pub /sine_wave_params std_msgs/Float32MultiArray "data: [20.0, 8.0, 20.0]" --once
+# data: [controlmode, amplitude, frequency, cycles]
+$ rostopic pub /gm6020_control std_msgs/Float32MultiArray "data: [4, 0.42, 4.0, 10.0]" --once
 ```
 
 ## Acknowledgement
