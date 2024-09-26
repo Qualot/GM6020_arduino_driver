@@ -30,7 +30,7 @@ unsigned long startTime = 0;
 // ROS setup
 ros::NodeHandle nh;
 std_msgs::Float32MultiArray sensor_data_msg;
-ros::Publisher sensor_data_pub("sensor_data", &sensor_data_msg);
+ros::Publisher sensor_data_pub("gm6020_sensor", &sensor_data_msg);
 
 void sendValues(short);
 void readValues();
@@ -50,7 +50,7 @@ void paramCallback(const std_msgs::Float32MultiArray& msg) {
   }
 }
 
-ros::Subscriber<std_msgs::Float32MultiArray> param_sub("sine_wave_params", &paramCallback);
+ros::Subscriber<std_msgs::Float32MultiArray> param_sub("gm6020_control", &paramCallback);
 
 void setup() {
   SPI.begin();
