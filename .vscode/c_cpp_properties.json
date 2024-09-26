@@ -1,0 +1,60 @@
+//
+// !!! WARNING !!! AUTO-GENERATED FILE!
+// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
+// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
+//
+{
+    "configurations": [
+        {
+            "name": "PlatformIO",
+            "includePath": [
+                "/home/leus/self_healing_ws/src/GM6020_arduino_driver/include",
+                "/home/leus/self_healing_ws/src/GM6020_arduino_driver/src",
+                "/home/leus/self_healing_ws/src/GM6020_arduino_driver/lib/ros_lib",
+                "/home/leus/self_healing_ws/src/GM6020_arduino_driver/.pio/libdeps/seeeduino/autowp-mcp2515",
+                "/home/leus/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                "/home/leus/.platformio/packages/framework-arduino-avr/cores/arduino",
+                "/home/leus/.platformio/packages/framework-arduino-avr/variants/standard",
+                "/home/leus/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                "/home/leus/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                "/home/leus/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                "/home/leus/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                ""
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "/home/leus/self_healing_ws/src/GM6020_arduino_driver/include",
+                    "/home/leus/self_healing_ws/src/GM6020_arduino_driver/src",
+                    "/home/leus/self_healing_ws/src/GM6020_arduino_driver/lib/ros_lib",
+                    "/home/leus/self_healing_ws/src/GM6020_arduino_driver/.pio/libdeps/seeeduino/autowp-mcp2515",
+                    "/home/leus/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                    "/home/leus/.platformio/packages/framework-arduino-avr/cores/arduino",
+                    "/home/leus/.platformio/packages/framework-arduino-avr/variants/standard",
+                    "/home/leus/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                    "/home/leus/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                    "/home/leus/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                    "/home/leus/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=60115",
+                "ARDUINO_AVR_SEEEDUINO",
+                "F_CPU=16000000L",
+                "ARDUINO_ARCH_AVR",
+                "ARDUINO=10808",
+                "__AVR_ATmega328P__",
+                ""
+            ],
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++11",
+            "compilerPath": "/home/leus/.platformio/packages/toolchain-atmelavr/bin/avr-gcc",
+            "compilerArgs": [
+                "-mmcu=atmega328p",
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}
