@@ -9,6 +9,7 @@ struct can_frame canMsgReceive;
 struct can_frame canMsgSend;
 MCP2515 mcp2515(10);
 
+int8_t controlmode = 8; //0...len, 2...direct, 4...vibration, 8...0out
 short power = -3000;
 float rotation = 0;
 float rotation_previous = 0;
@@ -32,10 +33,11 @@ ros::Publisher sensor_data_pub("sensor_data", &sensor_data_msg);
 
 // Callback function for Float32MultiArray topic
 void paramCallback(const std_msgs::Float32MultiArray& msg) {
-  if (msg.data_length == 3) {
-    amplitude = msg.data[0];
-    frequency = msg.data[1];
-    num_cycles = (int)msg.data[2];
+  if (msg.data_length == 4) {
+    controlmode = (int)msg.data[0];
+    amplitude = msg.data[1];
+    frequency = msg.data[2];
+    num_cycles = (int)msg.data[3];
     rotation_initial = rotation_cumulative;
 
     startTime = millis();
@@ -45,7 +47,7 @@ void paramCallback(const std_msgs::Float32MultiArray& msg) {
 
 ros::Subscriber<std_msgs::Float32MultiArray> param_sub("sine_wave_params", &paramCallback);
 
-void sendValues(float target_position);
+void sendValues(short);
 void readValues();
 
 void setup() {
@@ -65,7 +67,7 @@ void setup() {
   nh.subscribe(param_sub);
 
   sensor_data_msg.data = (float*)malloc(sensor_data_msg.data_length * sizeof(float));
-  sensor_data_msg.data_length = 6;
+  sensor_data_msg.data_length = 7;
 
   readValues();
   rotation_cumulative = rotation;
@@ -76,21 +78,55 @@ void loop() {
   unsigned long currentTime = millis();
   float elapsedTime = (currentTime - startTime) / 1000.0;
   float target_position = 0.0;
+  float pgain = 200.0;
+  short output = 0;
 
-  if (sine_control_active) {
+  switch (controlmode)
+  {
+  case 0: //len
+    target_position = amplitude;
+    output = (target_position - rotation_cumulative) * pgain; // pgain = 200 worked w/o divergence
+    sendValues(output);
+    break;
+
+  case 2: //direct
+    output = amplitude;
+    sendValues(output);
+    break;
+
+  case 4: //vibration
     if (elapsedTime < num_cycles / frequency) {
-      //target_position = rotation_initial;
       //target_position = amplitude * sin(2 * M_PI * frequency * elapsedTime);
-      //target_position = amplitude * sin(2 * M_PI * frequency * elapsedTime) + rotation_initial;
-      //target_position = amplitude * (1.0 - cos(2 * M_PI * frequency * elapsedTime));
       target_position = amplitude * (1.0 - cos(2 * M_PI * frequency * elapsedTime)) + rotation_initial;
-      sendValues(target_position);
+      output = (target_position - rotation_cumulative) * pgain; // pgain = 200 worked w/o divergence
+      sendValues(output);
     } else {
       sine_control_active = false;
+      controlmode = 8;
+      output = 0;
+      sendValues(output);
     }
-  }else{
-    sendValues(rotation_initial);
+    break;
+
+  case 8: //0out
+    sendValues(0);
+    break;
+  
+  default:
+    sendValues(0);
+    break;
   }
+
+  // if (sine_control_active) {
+  //   if (elapsedTime < num_cycles / frequency) {
+  //     target_position = amplitude * (1.0 - cos(2 * M_PI * frequency * elapsedTime)) + rotation_initial;
+  //     sendValues(target_position);
+  //   } else {
+  //     sine_control_active = false;
+  //   }
+  // }else{
+  //   sendValues(rotation_initial);
+  // }
 
   rotation_previous = rotation;
   readValues();
@@ -107,9 +143,10 @@ void loop() {
   sensor_data_msg.data[0] = rotation_initial;
   sensor_data_msg.data[1] = target_position;
   sensor_data_msg.data[2] = rotation_cumulative;
-  sensor_data_msg.data[3] = speed;
-  sensor_data_msg.data[4] = torque;
-  sensor_data_msg.data[5] = (float)temperature;
+  sensor_data_msg.data[3] = output;
+  sensor_data_msg.data[4] = speed;
+  sensor_data_msg.data[5] = torque;
+  sensor_data_msg.data[6] = (float)temperature;
 
   sensor_data_pub.publish(&sensor_data_msg);
 
@@ -132,11 +169,15 @@ void readValues() {
   }
 }
 
-void sendValues(float target_position) {
-  short output = (target_position - rotation_cumulative) * 200; // 200 worked w/o divergence
-
+void sendValues(short output) {
   canMsgSend.data[0] = (output >> 8) & 0xFF;
   canMsgSend.data[1] = output & 0xFF;
-
   mcp2515.sendMessage(&canMsgSend);
 }
+
+// void sendValues(float target_position) {
+//   short output = (target_position - rotation_cumulative) * 200; // 200 worked w/o divergence
+//   canMsgSend.data[0] = (output >> 8) & 0xFF;
+//   canMsgSend.data[1] = output & 0xFF;
+//   mcp2515.sendMessage(&canMsgSend);
+// }
